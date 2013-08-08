@@ -56,8 +56,8 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		
 		getViews();
-        mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        toggleAds(mPreferences.getBoolean("enable_ads", true));
+		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+		toggleAds(mPreferences.getBoolean("enable_ads", true));
 		
 		Intent intent = getIntent();
 		if (intent != null) {
@@ -81,8 +81,8 @@ public class MainActivity extends Activity {
 				public void onStopTrackingTouch(SeekBar seekBar) { }
 			});
 			
-		    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, 0);
-		    mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
+			SharedPreferences prefs = getSharedPreferences(PREFS_NAME, 0);
+			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
 		}
 		
 		if (getSysFsFile()) {
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
 		if (negativeTextId != 0 && negativeAction != null)
 			alertDialog.setNegativeButton(negativeTextId, negativeAction);
 
-        alertDialog.show();
+		alertDialog.show();
 	}
 
 	private void complainAbout(Errors error) {
@@ -134,7 +134,7 @@ public class MainActivity extends Activity {
 		              new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
 		            startActivity(uninstallIntent);
 		            
-					finish();
+		            finish();
 				}
 			});
 			break;
@@ -179,8 +179,8 @@ public class MainActivity extends Activity {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		
-        MenuItem item = menu.findItem(R.id.enable_ads);
-        item.setChecked(mPreferences.getBoolean("enable_ads", true));
+		MenuItem item = menu.findItem(R.id.enable_ads);
+		item.setChecked(mPreferences.getBoolean("enable_ads", true));
 		
 		return true;
 	}
@@ -255,9 +255,9 @@ public class MainActivity extends Activity {
                 showAbout();
                 return true;
             case R.id.action_donate:
-    			Intent intent = new Intent(Intent.ACTION_VIEW, 
-    					Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DRYFYGTC7Z8V2"));
-    			startActivity(intent);
+                Intent intent = new Intent(Intent.ACTION_VIEW, 
+                        Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DRYFYGTC7Z8V2"));
+                startActivity(intent);
             	return true;
             case R.id.enable_ads:
             	toggleAds(!item.isChecked());
@@ -283,7 +283,7 @@ public class MainActivity extends Activity {
 		.setTitle(R.string.about_dialog_title)
 		.setMessage(R.string.about_text);
 		
-        alertDialog.show();
+		alertDialog.show();
     }
 	
     private void toggleAds(boolean enable) {
