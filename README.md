@@ -1,5 +1,5 @@
-android-AdjustableTorch
-=======================
+Adjustable Torch
+=================
 
 Adjustable Torch is an application that allows you to use the torch at different brightness levels.
 
