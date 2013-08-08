@@ -129,12 +129,11 @@ public class MainActivity extends Activity {
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
 					
-		            Uri packageUri = Uri.parse("package:com.mohammadag.adjustabletorch");
-		            Intent uninstallIntent =
-		              new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
-		            startActivity(uninstallIntent);
+					Uri packageUri = Uri.parse("package:com.mohammadag.adjustabletorch");
+					Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
+					startActivity(uninstallIntent);
 		            
-		            finish();
+					finish();
 				}
 			});
 			break;
