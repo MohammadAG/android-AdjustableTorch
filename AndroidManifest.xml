@@ -43,13 +43,11 @@
             </intent-filter>
         </receiver>
 
-        <activity
-            android:name="com.mohammadag.adjustabletorch.ResultActivity"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
-            android:excludeFromRecents="true"
-            android:label="@string/title_activity_result" >
-        </activity>
+		<service
+		    android:enabled="true"
+		    android:name="com.mohammadag.adjustabletorch.ResultsService"
+		    android:label="Notification action results receiver"
+		    android:exported="true" />
     </application>
 
 </manifest>

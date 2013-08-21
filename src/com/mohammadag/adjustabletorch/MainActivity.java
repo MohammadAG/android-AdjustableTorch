@@ -6,10 +6,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
@@ -33,6 +35,7 @@ public class MainActivity extends Activity {
 	public static final String PREFS_NAME = "AdjustableTorch";
 	
 	private static final int mNotificationId = 1;
+	public static final String FLASH_VALUE_UPDATED_BROADCAST_NAME = "com.mohammadag.adjustabletorch.FLASH_VALUE_UPDATED";
 	
 	private Shell mShell = null;
 	private SeekBar mBrightnessSlider = null;
@@ -62,11 +65,18 @@ public class MainActivity extends Activity {
 		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 		toggleAds(mPreferences.getBoolean("enable_ads", true));
 		
+		IntentFilter iF = new IntentFilter(FLASH_VALUE_UPDATED_BROADCAST_NAME);
+		registerReceiver(mFlashValueUpdatedReceiver, iF);
+		
 		if (mBrightnessSlider != null) {
 			mBrightnessSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 				@Override
 				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 					updateTorchValue(progress);
+					
+					SharedPreferences.Editor editor = mPreferences.edit();
+					editor.putInt(SETTINGS_FLASH_KEY, progress);
+					editor.commit();
 				}
 				@Override
 				public void onStartTrackingTouch(SeekBar seekBar) { }
@@ -87,11 +97,55 @@ public class MainActivity extends Activity {
 		updateTorchValue(mBrightnessSlider.getProgress());
 	}
 	
-	public static void turnOffFlash() {
+	BroadcastReceiver mFlashValueUpdatedReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
+			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
+		}
+	};
+	
+	public static void turnOffFlash(Context context) {
 		if (FLASH_FILE.isEmpty())
 			getSysFsFile();
 		try {
 			updateTorchValue(0, RootTools.getShell(true));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return;
+		}
+		
+		NotificationManager mNotificationManager =
+			    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotificationManager.cancelAll();
+		
+		SharedPreferences settings = context.getSharedPreferences(MainActivity.PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putInt(MainActivity.SETTINGS_FLASH_KEY, 0);
+		editor.commit();
+	}
+	
+	public static void changeFlashValue(Context context, boolean increment) {
+		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
+			getSysFsFile();
+		
+		try {
+			SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
+			int newValue = prefs.getInt(SETTINGS_FLASH_KEY, 0);
+			if (increment)
+				newValue += 1;
+			else
+				newValue -= 1;
+			
+			if (newValue <= 0) {
+				turnOffFlash(context);
+				return;
+			}
+			updateTorchValue(newValue, RootTools.getShell(true));
+			
+			SharedPreferences.Editor editor = prefs.edit();
+			editor.putInt(SETTINGS_FLASH_KEY, newValue);
+			editor.commit();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -240,16 +294,33 @@ public class MainActivity extends Activity {
 			        .setContentTitle(getString(R.string.app_name))
 			        .setContentText(getString(R.string.notification_text))
 			        .setOngoing(true)
-			        .setTicker(getString(R.string.ticker_text));
-			Intent notifyIntent = new Intent(this, ResultActivity.class);
+			        .setTicker(getString(R.string.ticker_text))
+			        .addAction(R.drawable.ic_stat_minus, "", getPendingIntent(-1))
+			        .addAction(R.drawable.ic_stat_plus, "", getPendingIntent(1));
+			Intent notifyIntent = new Intent(this, ResultsService.class);
 			notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-			PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-			builder.setContentIntent(pendingIntent);
+			builder.setContentIntent(getPendingIntent(0));
 			mNotificationManager.notify(mNotificationId, builder.build());
 		} else {
 			mNotificationManager.cancelAll();
 		}
+	}
+	
+	private PendingIntent getPendingIntent(int state) {
+		// 0 = off, 1 == increase, -1 == decrease
+		Intent notifyIntent = new Intent(this, ResultsService.class);
+		notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		notifyIntent.setAction(String.valueOf(state));
+		PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+		
+		return pendingIntent;
+	}
+	
+	@Override
+	protected void onDestroy() {
+		unregisterReceiver(mFlashValueUpdatedReceiver);
+		super.onDestroy();
 	}
 	
     @Override
