@@ -8,14 +8,13 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,7 +23,6 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 
 import com.google.ads.AdRequest;
 import com.google.ads.AdView;
-
 import com.stericson.RootTools.RootTools;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.execution.Shell;
@@ -34,13 +32,18 @@ public class MainActivity extends Activity {
 	public static final String SETTINGS_FLASH_KEY = "flash_value";
 	public static final String PREFS_NAME = "AdjustableTorch";
 	
-	private static final String FLASH_FILE = "/sys/class/camera/flash/rear_flash";
-	private static final String mNotificationExtra = "isNotification";
 	private static final int mNotificationId = 1;
 	
 	private Shell mShell = null;
 	private SeekBar mBrightnessSlider = null;
 	private SharedPreferences mPreferences;
+	
+	private static String FLASH_FILE = null;
+	
+    private static String[] listOfFlashFiles = {
+            "/sys/class/camera/flash/rear_flash",
+            "/sys/class/camera/rear/rear_flash",
+    };
 	
 	private enum Errors {
 		NO_SYSFS_FILE,
@@ -58,16 +61,6 @@ public class MainActivity extends Activity {
 		getViews();
 		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 		toggleAds(mPreferences.getBoolean("enable_ads", true));
-		
-		Intent intent = getIntent();
-		if (intent != null) {
-			if (intent.getBooleanExtra(mNotificationExtra, false)) {
-				openShell();
-				updateTorchValue(0);
-				finish();
-				return;
-			}
-		}
 		
 		if (mBrightnessSlider != null) {
 			mBrightnessSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
@@ -92,6 +85,16 @@ public class MainActivity extends Activity {
 		}
 		
 		updateTorchValue(mBrightnessSlider.getProgress());
+	}
+	
+	public static void turnOffFlash() {
+		if (FLASH_FILE.isEmpty())
+			getSysFsFile();
+		try {
+			updateTorchValue(0, RootTools.getShell(true));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void getViews() {
@@ -165,17 +168,20 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private boolean getSysFsFile() {
-		File sysFsFile = new File(FLASH_FILE);
-		if (sysFsFile.exists())
-			return true;
+	private static boolean getSysFsFile() {
+		for (String filePath: listOfFlashFiles) {
+			File flashFile = new File(filePath);
+			if (flashFile.exists()) {
+				FLASH_FILE = filePath;
+				return true;
+			}
+		}
 		
 		return false;
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		
 		MenuItem item = menu.findItem(R.id.enable_ads);
@@ -185,25 +191,31 @@ public class MainActivity extends Activity {
 	}
 	
 	private boolean updateTorchValue(int value) {
+		showOngoingNotification((value > 0));
+		
+		return updateTorchValue(value, mShell);
+	}
+	
+	private static boolean updateTorchValue(int value, Shell shell) {
 		if (value > 30)
 			return false;
 		
-		showOngoingNotification((value > 0));
-		
 		String commandString = "echo " + String.valueOf(value) + " > " + FLASH_FILE;
 		CommandCapture command = new CommandCapture(0, commandString);
-		if (mShell != null) {
+		if (shell != null) {
 			try {
-				mShell.add(command).waitForFinish();
+				shell.add(command).waitForFinish();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return false;
 			}
 			return true;
 		} else {
-			openShell();
-			updateTorchValue(value);
+			try {
+				updateTorchValue(value, RootTools.getShell(true));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		
 		return false;
@@ -222,25 +234,19 @@ public class MainActivity extends Activity {
 			    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		
 		if (show) {
-			NotificationCompat.Builder mBuilder =
+			NotificationCompat.Builder builder =
 			        new NotificationCompat.Builder(this)
 			        .setSmallIcon(R.drawable.ic_launcher)
 			        .setContentTitle(getString(R.string.app_name))
 			        .setContentText(getString(R.string.notification_text))
 			        .setOngoing(true)
 			        .setTicker(getString(R.string.ticker_text));
-			
-			Intent resultIntent = new Intent(this, MainActivity.class);
-			resultIntent.putExtra(mNotificationExtra, true);
+			Intent notifyIntent = new Intent(this, ResultActivity.class);
+			notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+			PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-			TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-			stackBuilder.addParentStack(MainActivity.class);
-			stackBuilder.addNextIntent(resultIntent);
-			PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0,
-			            PendingIntent.FLAG_UPDATE_CURRENT);
-			mBuilder.setContentIntent(resultPendingIntent);
-			
-			mNotificationManager.notify(mNotificationId, mBuilder.build());
+			builder.setContentIntent(pendingIntent);
+			mNotificationManager.notify(mNotificationId, builder.build());
 		} else {
 			mNotificationManager.cancelAll();
 		}

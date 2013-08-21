@@ -17,5 +17,6 @@
     <string name="about_dialog_title">About</string>
     <string name="about_text">Adjustable torch application allows you to use the torch light at different brightness levels.\n\n© 2013\nMohammad Abu-Garbeyyeh</string>
     <string name="action_donate">Donate</string>
+    <string name="title_activity_result">ResultActivity</string>
 
 </resources>
