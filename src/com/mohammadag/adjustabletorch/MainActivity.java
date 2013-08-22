@@ -2,8 +2,10 @@ package com.mohammadag.adjustabletorch;
 
 import java.io.File;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -14,6 +16,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
@@ -283,6 +286,7 @@ public class MainActivity extends Activity {
 		}
 	}
 	
+	@SuppressLint("InlinedApi")
 	private void showOngoingNotification(boolean show) {
 		NotificationManager mNotificationManager =
 			    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -297,11 +301,20 @@ public class MainActivity extends Activity {
 			        .setTicker(getString(R.string.ticker_text))
 			        .addAction(R.drawable.ic_stat_minus, "", getPendingIntent(-1))
 			        .addAction(R.drawable.ic_stat_plus, "", getPendingIntent(1));
+			
+			if (Build.VERSION.SDK_INT >= 16) {
+				 builder.setPriority(Notification.PRIORITY_MAX);
+			}
+			
 			Intent notifyIntent = new Intent(this, ResultsService.class);
 			notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 			builder.setContentIntent(getPendingIntent(0));
-			mNotificationManager.notify(mNotificationId, builder.build());
+			Notification notification = builder.build();
+			if (Build.VERSION.SDK_INT >= 16) {
+				notification.priority = Notification.PRIORITY_MAX;
+			}
+			mNotificationManager.notify(mNotificationId, notification);
 		} else {
 			mNotificationManager.cancelAll();
 		}

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mohammadag.adjustabletorch"
-    android:versionCode="2"
-    android:versionName="1.1" >
+    android:versionCode="3"
+    android:versionName="1.2" >
 
     <uses-sdk
         android:minSdkVersion="14"
@@ -47,7 +47,7 @@
 		    android:enabled="true"
 		    android:name="com.mohammadag.adjustabletorch.ResultsService"
 		    android:label="Notification action results receiver"
-		    android:exported="true" />
+		    android:exported="false" />
     </application>
 
 </manifest>
