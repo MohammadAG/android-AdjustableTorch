@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
 	
 	private Shell mShell = null;
 	private SeekBar mBrightnessSlider = null;
-	private SharedPreferences mPreferences;
+	private SharedPreferences mPreferences = null;
 	
 	private static String FLASH_FILE = null;
 	
@@ -87,8 +87,7 @@ public class MainActivity extends Activity {
 				public void onStopTrackingTouch(SeekBar seekBar) { }
 			});
 			
-			SharedPreferences prefs = getSharedPreferences(PREFS_NAME, 0);
-			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
+			mBrightnessSlider.setProgress(mPreferences.getInt(SETTINGS_FLASH_KEY, 0));
 		}
 		
 		if (getSysFsFile()) {
@@ -96,20 +95,18 @@ public class MainActivity extends Activity {
 		} else {
 			complainAbout(Errors.NO_SYSFS_FILE);
 		}
-		
-		updateTorchValue(mBrightnessSlider.getProgress());
 	}
 	
 	BroadcastReceiver mFlashValueUpdatedReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
 			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
 		}
 	};
 	
 	public static void turnOffFlash(Context context) {
-		if (FLASH_FILE.isEmpty())
+		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
 			getSysFsFile();
 		try {
 			updateTorchValue(0, RootTools.getShell(true));
@@ -122,7 +119,7 @@ public class MainActivity extends Activity {
 			    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancelAll();
 		
-		SharedPreferences settings = context.getSharedPreferences(MainActivity.PREFS_NAME, 0);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putInt(MainActivity.SETTINGS_FLASH_KEY, 0);
 		editor.commit();
@@ -133,7 +130,7 @@ public class MainActivity extends Activity {
 			getSysFsFile();
 		
 		try {
-			SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
 			int newValue = prefs.getInt(SETTINGS_FLASH_KEY, 0);
 			if (increment)
 				newValue += 1;
@@ -221,6 +218,7 @@ public class MainActivity extends Activity {
 				complainAbout(Errors.NO_ROOT_ACCESS);
 			} else {
 				openShell();
+				updateTorchValue(mBrightnessSlider.getProgress());
 			}
 		}
 	}
@@ -361,14 +359,14 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onPause() {
 		super.onPause();
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putInt(SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress());
 		editor.commit();
 	}
 	
 	public void showAbout() {
-		AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this)
+		AlertDialog.Builder alertDialog = new AlertDialog.Builder(this)
 		.setTitle(R.string.about_dialog_title)
 		.setMessage(R.string.about_text);
 		
