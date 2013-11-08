@@ -1,7 +1,5 @@
 package com.mohammadag.adjustabletorch;
 
-import java.io.File;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -29,18 +27,16 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import com.google.ads.AdRequest;
 import com.google.ads.AdView;
 import com.stericson.RootTools.RootTools;
-import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.execution.Shell;
 
 public class MainActivity extends Activity {
 	private SeekBar mBrightnessSlider = null;
 	private SharedPreferences mPreferences = null;
 
-	private static String FLASH_FILE = null;
 	private boolean mInvertValues = false;
 
 	private Shell mShell = null;
-	
+
 	private enum Errors {
 		NO_SYSFS_FILE,
 		NO_ROOT,
@@ -91,7 +87,7 @@ public class MainActivity extends Activity {
 			mBrightnessSlider.setProgress(mPreferences.getInt(Constants.SETTINGS_FLASH_KEY, 0));
 		}
 
-		if (getSysFsFile()) {
+		if (Utils.getSysFsFile() != null) {
 			checkForRoot();
 		} else {
 			complainAbout(Errors.NO_SYSFS_FILE);
@@ -105,60 +101,6 @@ public class MainActivity extends Activity {
 			mBrightnessSlider.setProgress(prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0));
 		}
 	};
-
-	public static void turnOffFlash(Context context) {
-		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
-			getSysFsFile();
-		try {
-			updateTorchValue(0, RootTools.getShell(true));
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
-
-		NotificationManager mNotificationManager =
-				(NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-		mNotificationManager.cancelAll();
-
-		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putInt(Constants.SETTINGS_FLASH_KEY, 0);
-		editor.commit();
-	}
-
-	public static void changeFlashValue(Context context, boolean increment) {
-		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
-			getSysFsFile();
-
-		try {
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-			int newValue = prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0);
-			if (increment)
-				newValue += 1;
-			else
-				newValue -= 1;
-
-			if (newValue <= 0) {
-				turnOffFlash(context);
-				return;
-			}
-			
-			if (newValue != 0 && prefs.getBoolean(Constants.SETTINGS_INVERT_VALUES, false)) {
-				/* Some devices like the Galaxy S3 have inverted values for some reason
-				 * For example, 15 == 1, 14 == 2
-				 */
-				if (newValue == 16) {
-					newValue = 1;
-				} else {
-					newValue = 16 - newValue;
-				}
-			}
-			updateTorchValue(newValue, RootTools.getShell(true));
-			prefs.edit().putInt(Constants.SETTINGS_FLASH_KEY, newValue).commit();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 
 	private void getViews() {
 		mBrightnessSlider = (SeekBar) findViewById(R.id.flashlightBrightnessSlider);
@@ -175,7 +117,7 @@ public class MainActivity extends Activity {
 
 		if (negativeTextId != 0 && negativeAction != null)
 			alertDialog.setNegativeButton(negativeTextId, negativeAction);
-		
+
 		alertDialog.setCancelable(false);
 		alertDialog.show();
 	}
@@ -233,18 +175,6 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private static boolean getSysFsFile() {
-		for (String filePath: Constants.listOfFlashFiles) {
-			File flashFile = new File(filePath);
-			if (flashFile.exists()) {
-				FLASH_FILE = filePath;
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.main, menu);
@@ -260,33 +190,7 @@ public class MainActivity extends Activity {
 
 	private boolean updateTorchValue(int value) {
 		showOngoingNotification((value > 0));
-
-		return updateTorchValue(value, mShell);
-	}
-
-	private static boolean updateTorchValue(int value, Shell shell) {
-		if (value > 30)
-			return false;
-
-		String commandString = "echo " + String.valueOf(value) + " > " + FLASH_FILE;
-		CommandCapture command = new CommandCapture(0, commandString);
-		if (shell != null) {
-			try {
-				shell.add(command).waitForFinish();
-			} catch (Exception e) {
-				e.printStackTrace();
-				return false;
-			}
-			return true;
-		} else {
-			try {
-				updateTorchValue(value, RootTools.getShell(true));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
-		return false;
+		return Utils.updateTorchValue(value, mShell);
 	}
 
 	private void openShell() {

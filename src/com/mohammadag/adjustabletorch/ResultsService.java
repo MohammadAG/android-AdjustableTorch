@@ -17,12 +17,11 @@ public class ResultsService extends IntentService {
 		int action = Integer.parseInt(intent.getAction());
 		
 		if (action == -1) {
-			MainActivity.changeFlashValue(getApplicationContext(), false);
+			Utils.changeFlashValue(getApplicationContext(), false);
 		} else if (action == 0) {
-			MainActivity.turnOffFlash(getApplicationContext());
-			
+			Utils.turnOffFlash(getApplicationContext());
 		} else if (action == 1) {
-			MainActivity.changeFlashValue(getApplicationContext(), true);
+			Utils.changeFlashValue(getApplicationContext(), true);
 		}
 		
 		Intent broadcastIntent = new Intent(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
