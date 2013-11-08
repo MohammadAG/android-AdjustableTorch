@@ -33,24 +33,27 @@ import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.execution.Shell;
 
 public class MainActivity extends Activity {
-	
+
 	public static final String SETTINGS_FLASH_KEY = "flash_value";
+	public static final String SETTINGS_INVERT_VALUES = "invert_values";
+	public static final String SETTINGS_ENABLE_ADS = "enable_ads";
 	public static final String PREFS_NAME = "AdjustableTorch";
-	
+
 	private static final int mNotificationId = 1;
 	public static final String FLASH_VALUE_UPDATED_BROADCAST_NAME = "com.mohammadag.adjustabletorch.FLASH_VALUE_UPDATED";
-	
+
 	private Shell mShell = null;
 	private SeekBar mBrightnessSlider = null;
 	private SharedPreferences mPreferences = null;
-	
+
 	private static String FLASH_FILE = null;
-	
-    private static String[] listOfFlashFiles = {
-            "/sys/class/camera/flash/rear_flash",
-            "/sys/class/camera/rear/rear_flash",
-    };
-	
+	private boolean mInvertValues = false;
+
+	private static String[] listOfFlashFiles = {
+		"/sys/class/camera/flash/rear_flash",
+		"/sys/class/camera/rear/rear_flash",
+	};
+
 	private enum Errors {
 		NO_SYSFS_FILE,
 		NO_ROOT,
@@ -63,40 +66,51 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+
 		getViews();
 		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-		toggleAds(mPreferences.getBoolean("enable_ads", true));
-		
+		toggleAds(mPreferences.getBoolean(SETTINGS_ENABLE_ADS, true));
+		mInvertValues = mPreferences.getBoolean(SETTINGS_INVERT_VALUES, false);
+
 		IntentFilter iF = new IntentFilter(FLASH_VALUE_UPDATED_BROADCAST_NAME);
 		registerReceiver(mFlashValueUpdatedReceiver, iF);
-		
+
 		if (mBrightnessSlider != null) {
 			mBrightnessSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 				@Override
 				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-					updateTorchValue(progress);
-					
-					SharedPreferences.Editor editor = mPreferences.edit();
-					editor.putInt(SETTINGS_FLASH_KEY, progress);
-					editor.commit();
+					int newValue = progress;
+
+					if (progress != 0 && mInvertValues) {
+						/* Some devices like the Galaxy S3 have inverted values for some reason
+						 * For example, 15 == 1, 14 == 2
+						 */
+						if (progress == mBrightnessSlider.getMax()) {
+							newValue = 1;
+						} else {
+							newValue = mBrightnessSlider.getMax() - progress;
+						}
+					}
+
+					updateTorchValue(newValue);
+					mPreferences.edit().putInt(SETTINGS_FLASH_KEY, progress).commit();
 				}
 				@Override
 				public void onStartTrackingTouch(SeekBar seekBar) { }
 				@Override
 				public void onStopTrackingTouch(SeekBar seekBar) { }
 			});
-			
+
 			mBrightnessSlider.setProgress(mPreferences.getInt(SETTINGS_FLASH_KEY, 0));
 		}
-		
+
 		if (getSysFsFile()) {
 			checkForRoot();
 		} else {
 			complainAbout(Errors.NO_SYSFS_FILE);
 		}
 	}
-	
+
 	BroadcastReceiver mFlashValueUpdatedReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -104,7 +118,7 @@ public class MainActivity extends Activity {
 			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
 		}
 	};
-	
+
 	public static void turnOffFlash(Context context) {
 		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
 			getSysFsFile();
@@ -114,21 +128,21 @@ public class MainActivity extends Activity {
 			e.printStackTrace();
 			return;
 		}
-		
+
 		NotificationManager mNotificationManager =
-			    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+				(NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		mNotificationManager.cancelAll();
-		
+
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putInt(MainActivity.SETTINGS_FLASH_KEY, 0);
 		editor.commit();
 	}
-	
+
 	public static void changeFlashValue(Context context, boolean increment) {
 		if (FLASH_FILE == null || FLASH_FILE.isEmpty())
 			getSysFsFile();
-		
+
 		try {
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
 			int newValue = prefs.getInt(SETTINGS_FLASH_KEY, 0);
@@ -136,13 +150,24 @@ public class MainActivity extends Activity {
 				newValue += 1;
 			else
 				newValue -= 1;
-			
+
 			if (newValue <= 0) {
 				turnOffFlash(context);
 				return;
 			}
-			updateTorchValue(newValue, RootTools.getShell(true));
 			
+			if (newValue != 0 && prefs.getBoolean(SETTINGS_INVERT_VALUES, false)) {
+				/* Some devices like the Galaxy S3 have inverted values for some reason
+				 * For example, 15 == 1, 14 == 2
+				 */
+				if (newValue == 16) {
+					newValue = 1;
+				} else {
+					newValue = 16 - newValue;
+				}
+			}
+			updateTorchValue(newValue, RootTools.getShell(true));
+
 			SharedPreferences.Editor editor = prefs.edit();
 			editor.putInt(SETTINGS_FLASH_KEY, newValue);
 			editor.commit();
@@ -150,7 +175,7 @@ public class MainActivity extends Activity {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void getViews() {
 		mBrightnessSlider = (SeekBar) findViewById(R.id.flashlightBrightnessSlider);
 	}
@@ -160,12 +185,14 @@ public class MainActivity extends Activity {
 		AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this)
 		.setTitle(titleId)
 		.setMessage(messageId);
-		
+
 		if (positiveTextId != 0 && positiveAction != null)
 			alertDialog.setPositiveButton(positiveTextId, positiveAction);
-			
+
 		if (negativeTextId != 0 && negativeAction != null)
 			alertDialog.setNegativeButton(negativeTextId, negativeAction);
+		
+		alertDialog.setCancelable(false);
 
 		alertDialog.show();
 	}
@@ -178,18 +205,18 @@ public class MainActivity extends Activity {
 				finish();
 			}
 		};
-		
+
 		switch (error) {
 		case NO_SYSFS_FILE:
 			createDialog(R.string.error, R.string.no_sysfs_file, 0, null, R.string.uninstall_and_quit, new OnClickListener() {		
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
-					
+
 					Uri packageUri = Uri.parse("package:com.mohammadag.adjustabletorch");
 					Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
 					startActivity(uninstallIntent);
-		            
+
 					finish();
 				}
 			});
@@ -231,30 +258,33 @@ public class MainActivity extends Activity {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.main, menu);
-		
+
 		MenuItem item = menu.findItem(R.id.enable_ads);
 		item.setChecked(mPreferences.getBoolean("enable_ads", true));
-		
+
+		MenuItem invertValuesItem = menu.findItem(R.id.invert_values);
+		invertValuesItem.setChecked(mPreferences.getBoolean("invert_values", false));
+
 		return true;
 	}
-	
+
 	private boolean updateTorchValue(int value) {
 		showOngoingNotification((value > 0));
-		
+
 		return updateTorchValue(value, mShell);
 	}
-	
+
 	private static boolean updateTorchValue(int value, Shell shell) {
 		if (value > 30)
 			return false;
-		
+
 		String commandString = "echo " + String.valueOf(value) + " > " + FLASH_FILE;
 		CommandCapture command = new CommandCapture(0, commandString);
 		if (shell != null) {
@@ -272,10 +302,10 @@ public class MainActivity extends Activity {
 				e.printStackTrace();
 			}
 		}
-		
+
 		return false;
 	}
-	
+
 	private void openShell() {
 		try {
 			mShell = RootTools.getShell(true);
@@ -283,27 +313,27 @@ public class MainActivity extends Activity {
 			e.printStackTrace();
 		}
 	}
-	
-	@SuppressLint("InlinedApi")
+
+	@SuppressLint({ "InlinedApi", "NewApi" })
 	private void showOngoingNotification(boolean show) {
 		NotificationManager mNotificationManager =
-			    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		
+				(NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
 		if (show) {
 			NotificationCompat.Builder builder =
-			        new NotificationCompat.Builder(this)
-			        .setSmallIcon(R.drawable.ic_launcher)
-			        .setContentTitle(getString(R.string.app_name))
-			        .setContentText(getString(R.string.notification_text))
-			        .setOngoing(true)
-			        .setTicker(getString(R.string.ticker_text))
-			        .addAction(R.drawable.ic_stat_minus, "", getPendingIntent(-1))
-			        .addAction(R.drawable.ic_stat_plus, "", getPendingIntent(1));
-			
+					new NotificationCompat.Builder(this)
+			.setSmallIcon(R.drawable.ic_launcher)
+			.setContentTitle(getString(R.string.app_name))
+			.setContentText(getString(R.string.notification_text))
+			.setOngoing(true)
+			.setTicker(getString(R.string.ticker_text))
+			.addAction(R.drawable.ic_stat_minus, "", getPendingIntent(-1))
+			.addAction(R.drawable.ic_stat_plus, "", getPendingIntent(1));
+
 			if (Build.VERSION.SDK_INT >= 16) {
-				 builder.setPriority(Notification.PRIORITY_MAX);
+				builder.setPriority(Notification.PRIORITY_MAX);
 			}
-			
+
 			Intent notifyIntent = new Intent(this, ResultsService.class);
 			notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
@@ -317,45 +347,52 @@ public class MainActivity extends Activity {
 			mNotificationManager.cancelAll();
 		}
 	}
-	
+
 	private PendingIntent getPendingIntent(int state) {
 		// 0 = off, 1 == increase, -1 == decrease
 		Intent notifyIntent = new Intent(this, ResultsService.class);
 		notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 		notifyIntent.setAction(String.valueOf(state));
 		PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-		
+
 		return pendingIntent;
 	}
-	
+
 	@Override
 	protected void onDestroy() {
 		unregisterReceiver(mFlashValueUpdatedReceiver);
 		super.onDestroy();
 	}
-	
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle item selection
-        switch (item.getItemId()) {
-            case R.id.action_about:
-                showAbout();
-                return true;
-            case R.id.action_donate:
-                Intent intent = new Intent(Intent.ACTION_VIEW, 
-                        Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DRYFYGTC7Z8V2"));
-                startActivity(intent);
-            	return true;
-            case R.id.enable_ads:
-            	toggleAds(!item.isChecked());
-            	mPreferences.edit().putBoolean("enable_ads", !item.isChecked()).commit();
-            	item.setChecked(!item.isChecked());
-            	return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
-    
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		// Handle item selection
+		switch (item.getItemId()) {
+		case R.id.action_about:
+			showAbout();
+			return true;
+		case R.id.action_donate:
+			Intent intent = new Intent(Intent.ACTION_VIEW, 
+					Uri.parse("https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DRYFYGTC7Z8V2"));
+			startActivity(intent);
+			return true;
+		case R.id.enable_ads:
+			toggleAds(!item.isChecked());
+			mPreferences.edit().putBoolean(SETTINGS_ENABLE_ADS, !item.isChecked()).commit();
+			item.setChecked(!item.isChecked());
+			return true;
+		case R.id.invert_values:
+			mBrightnessSlider.setProgress(0);
+			updateTorchValue(0);
+			mPreferences.edit().putBoolean(SETTINGS_INVERT_VALUES, !item.isChecked()).commit();
+			item.setChecked(!item.isChecked());
+			mInvertValues = item.isChecked();
+			return true;
+		default:
+			return super.onOptionsItemSelected(item);
+		}
+	}
+
 	@Override
 	protected void onPause() {
 		super.onPause();
@@ -364,24 +401,24 @@ public class MainActivity extends Activity {
 		editor.putInt(SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress());
 		editor.commit();
 	}
-	
+
 	public void showAbout() {
 		AlertDialog.Builder alertDialog = new AlertDialog.Builder(this)
 		.setTitle(R.string.about_dialog_title)
 		.setMessage(R.string.about_text);
-		
+
 		alertDialog.show();
-    }
-	
-    private void toggleAds(boolean enable) {
+	}
+
+	private void toggleAds(boolean enable) {
 		if (enable) {
 			showAd();
 		} else {
 			hideAd();
 		}
-    }
-	 
-    private void showAd() {
+	}
+
+	private void showAd() {
 		final AdView adLayout = (AdView) findViewById(R.id.adView);
 		runOnUiThread(new Runnable() {
 			@Override
@@ -391,9 +428,9 @@ public class MainActivity extends Activity {
 				adLayout.loadAd(new AdRequest());
 			}
 		});
-    }
-    
-    private void hideAd() {
+	}
+
+	private void hideAd() {
 		final AdView adLayout = (AdView) findViewById(R.id.adView);
 		runOnUiThread(new Runnable() {
 			@Override
@@ -402,5 +439,5 @@ public class MainActivity extends Activity {
 				adLayout.setVisibility(View.GONE);
 			}
 		});
-    }
+	}
 }
