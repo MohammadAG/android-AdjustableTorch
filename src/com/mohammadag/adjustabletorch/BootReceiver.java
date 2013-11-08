@@ -10,9 +10,7 @@ public class BootReceiver extends BroadcastReceiver {
 
 	private void resetFlashValue(Context context) {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putInt(MainActivity.SETTINGS_FLASH_KEY, 0);
-		editor.commit();
+		settings.edit().putInt(Constants.SETTINGS_FLASH_KEY, 0).commit();
 	}
 
 	@Override

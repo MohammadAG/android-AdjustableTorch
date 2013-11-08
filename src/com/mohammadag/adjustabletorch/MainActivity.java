@@ -33,27 +33,14 @@ import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.execution.Shell;
 
 public class MainActivity extends Activity {
-
-	public static final String SETTINGS_FLASH_KEY = "flash_value";
-	public static final String SETTINGS_INVERT_VALUES = "invert_values";
-	public static final String SETTINGS_ENABLE_ADS = "enable_ads";
-	public static final String PREFS_NAME = "AdjustableTorch";
-
-	private static final int mNotificationId = 1;
-	public static final String FLASH_VALUE_UPDATED_BROADCAST_NAME = "com.mohammadag.adjustabletorch.FLASH_VALUE_UPDATED";
-
-	private Shell mShell = null;
 	private SeekBar mBrightnessSlider = null;
 	private SharedPreferences mPreferences = null;
 
 	private static String FLASH_FILE = null;
 	private boolean mInvertValues = false;
 
-	private static String[] listOfFlashFiles = {
-		"/sys/class/camera/flash/rear_flash",
-		"/sys/class/camera/rear/rear_flash",
-	};
-
+	private Shell mShell = null;
+	
 	private enum Errors {
 		NO_SYSFS_FILE,
 		NO_ROOT,
@@ -69,10 +56,10 @@ public class MainActivity extends Activity {
 
 		getViews();
 		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-		toggleAds(mPreferences.getBoolean(SETTINGS_ENABLE_ADS, true));
-		mInvertValues = mPreferences.getBoolean(SETTINGS_INVERT_VALUES, false);
+		toggleAds(mPreferences.getBoolean(Constants.SETTINGS_ENABLE_ADS, true));
+		mInvertValues = mPreferences.getBoolean(Constants.SETTINGS_INVERT_VALUES, false);
 
-		IntentFilter iF = new IntentFilter(FLASH_VALUE_UPDATED_BROADCAST_NAME);
+		IntentFilter iF = new IntentFilter(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
 		registerReceiver(mFlashValueUpdatedReceiver, iF);
 
 		if (mBrightnessSlider != null) {
@@ -93,7 +80,7 @@ public class MainActivity extends Activity {
 					}
 
 					updateTorchValue(newValue);
-					mPreferences.edit().putInt(SETTINGS_FLASH_KEY, progress).commit();
+					mPreferences.edit().putInt(Constants.SETTINGS_FLASH_KEY, progress).commit();
 				}
 				@Override
 				public void onStartTrackingTouch(SeekBar seekBar) { }
@@ -101,7 +88,7 @@ public class MainActivity extends Activity {
 				public void onStopTrackingTouch(SeekBar seekBar) { }
 			});
 
-			mBrightnessSlider.setProgress(mPreferences.getInt(SETTINGS_FLASH_KEY, 0));
+			mBrightnessSlider.setProgress(mPreferences.getInt(Constants.SETTINGS_FLASH_KEY, 0));
 		}
 
 		if (getSysFsFile()) {
@@ -115,7 +102,7 @@ public class MainActivity extends Activity {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-			mBrightnessSlider.setProgress(prefs.getInt(SETTINGS_FLASH_KEY, 0));
+			mBrightnessSlider.setProgress(prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0));
 		}
 	};
 
@@ -135,7 +122,7 @@ public class MainActivity extends Activity {
 
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
 		SharedPreferences.Editor editor = settings.edit();
-		editor.putInt(MainActivity.SETTINGS_FLASH_KEY, 0);
+		editor.putInt(Constants.SETTINGS_FLASH_KEY, 0);
 		editor.commit();
 	}
 
@@ -145,7 +132,7 @@ public class MainActivity extends Activity {
 
 		try {
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-			int newValue = prefs.getInt(SETTINGS_FLASH_KEY, 0);
+			int newValue = prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0);
 			if (increment)
 				newValue += 1;
 			else
@@ -156,7 +143,7 @@ public class MainActivity extends Activity {
 				return;
 			}
 			
-			if (newValue != 0 && prefs.getBoolean(SETTINGS_INVERT_VALUES, false)) {
+			if (newValue != 0 && prefs.getBoolean(Constants.SETTINGS_INVERT_VALUES, false)) {
 				/* Some devices like the Galaxy S3 have inverted values for some reason
 				 * For example, 15 == 1, 14 == 2
 				 */
@@ -167,10 +154,7 @@ public class MainActivity extends Activity {
 				}
 			}
 			updateTorchValue(newValue, RootTools.getShell(true));
-
-			SharedPreferences.Editor editor = prefs.edit();
-			editor.putInt(SETTINGS_FLASH_KEY, newValue);
-			editor.commit();
+			prefs.edit().putInt(Constants.SETTINGS_FLASH_KEY, newValue).commit();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -193,7 +177,6 @@ public class MainActivity extends Activity {
 			alertDialog.setNegativeButton(negativeTextId, negativeAction);
 		
 		alertDialog.setCancelable(false);
-
 		alertDialog.show();
 	}
 
@@ -213,7 +196,7 @@ public class MainActivity extends Activity {
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
 
-					Uri packageUri = Uri.parse("package:com.mohammadag.adjustabletorch");
+					Uri packageUri = Uri.parse(String.format("package:%s", Constants.PACKAGE_NAME));
 					Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
 					startActivity(uninstallIntent);
 
@@ -251,7 +234,7 @@ public class MainActivity extends Activity {
 	}
 
 	private static boolean getSysFsFile() {
-		for (String filePath: listOfFlashFiles) {
+		for (String filePath: Constants.listOfFlashFiles) {
 			File flashFile = new File(filePath);
 			if (flashFile.exists()) {
 				FLASH_FILE = filePath;
@@ -342,7 +325,7 @@ public class MainActivity extends Activity {
 			if (Build.VERSION.SDK_INT >= 16) {
 				notification.priority = Notification.PRIORITY_MAX;
 			}
-			mNotificationManager.notify(mNotificationId, notification);
+			mNotificationManager.notify(Constants.mNotificationId, notification);
 		} else {
 			mNotificationManager.cancelAll();
 		}
@@ -378,13 +361,13 @@ public class MainActivity extends Activity {
 			return true;
 		case R.id.enable_ads:
 			toggleAds(!item.isChecked());
-			mPreferences.edit().putBoolean(SETTINGS_ENABLE_ADS, !item.isChecked()).commit();
+			mPreferences.edit().putBoolean(Constants.SETTINGS_ENABLE_ADS, !item.isChecked()).commit();
 			item.setChecked(!item.isChecked());
 			return true;
 		case R.id.invert_values:
 			mBrightnessSlider.setProgress(0);
 			updateTorchValue(0);
-			mPreferences.edit().putBoolean(SETTINGS_INVERT_VALUES, !item.isChecked()).commit();
+			mPreferences.edit().putBoolean(Constants.SETTINGS_INVERT_VALUES, !item.isChecked()).commit();
 			item.setChecked(!item.isChecked());
 			mInvertValues = item.isChecked();
 			return true;
@@ -397,9 +380,7 @@ public class MainActivity extends Activity {
 	protected void onPause() {
 		super.onPause();
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-		SharedPreferences.Editor editor = settings.edit();
-		editor.putInt(SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress());
-		editor.commit();
+		settings.edit().putInt(Constants.SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress()).commit();
 	}
 
 	public void showAbout() {

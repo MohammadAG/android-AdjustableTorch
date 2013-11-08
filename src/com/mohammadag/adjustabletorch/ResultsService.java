@@ -25,7 +25,7 @@ public class ResultsService extends IntentService {
 			MainActivity.changeFlashValue(getApplicationContext(), true);
 		}
 		
-		Intent broadcastIntent = new Intent(MainActivity.FLASH_VALUE_UPDATED_BROADCAST_NAME);
+		Intent broadcastIntent = new Intent(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
 		sendBroadcast(broadcastIntent);
 	}
 }
