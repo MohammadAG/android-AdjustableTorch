@@ -15,16 +15,21 @@ public class ResultsService extends IntentService {
 	@Override
 	protected void onHandleIntent(Intent intent) {
 		int action = Integer.parseInt(intent.getAction());
-
+		
+		int newValue = -1;
 		if (action == -1) {
-			Utils.changeFlashValue(getApplicationContext(), false);
+			newValue = Utils.changeFlashValue(getApplicationContext(), false);
 		} else if (action == 0) {
 			Utils.turnOffFlash(getApplicationContext());
+			newValue = 0;
 		} else if (action == 1) {
-			Utils.changeFlashValue(getApplicationContext(), true);
+			newValue = Utils.changeFlashValue(getApplicationContext(), true);
 		}
 
 		Intent broadcastIntent = new Intent(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
+		broadcastIntent.putExtra(Constants.KEY_NEW_VALUE, newValue);
 		sendBroadcast(broadcastIntent);
+		
+		Utils.showOngoingNotification(getApplicationContext(), newValue > 0);
 	}
 }

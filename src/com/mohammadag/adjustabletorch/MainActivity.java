@@ -1,11 +1,7 @@
 package com.mohammadag.adjustabletorch;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -14,10 +10,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -55,8 +49,8 @@ public class MainActivity extends Activity {
 		toggleAds(mPreferences.getBoolean(Constants.SETTINGS_ENABLE_ADS, true));
 		mInvertValues = mPreferences.getBoolean(Constants.SETTINGS_INVERT_VALUES, false);
 
-		IntentFilter iF = new IntentFilter(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
-		registerReceiver(mFlashValueUpdatedReceiver, iF);
+		registerReceiver(mFlashValueUpdatedReceiver,
+				new IntentFilter(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME));
 
 		if (mBrightnessSlider != null) {
 			mBrightnessSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
@@ -97,8 +91,15 @@ public class MainActivity extends Activity {
 	BroadcastReceiver mFlashValueUpdatedReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-			mBrightnessSlider.setProgress(prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0));
+			int newValue = intent.getIntExtra(Constants.KEY_NEW_VALUE, 0);
+			if (mInvertValues && newValue != 0) {
+				if (newValue == mBrightnessSlider.getMax())
+					newValue = 0;
+				else
+					newValue = mBrightnessSlider.getMax() - newValue;
+			}
+
+			mBrightnessSlider.setProgress(newValue);
 		}
 	};
 
@@ -201,48 +202,8 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	@SuppressLint({ "InlinedApi", "NewApi" })
 	private void showOngoingNotification(boolean show) {
-		NotificationManager mNotificationManager =
-				(NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-		if (show) {
-			NotificationCompat.Builder builder =
-					new NotificationCompat.Builder(this)
-			.setSmallIcon(R.drawable.ic_launcher)
-			.setContentTitle(getString(R.string.app_name))
-			.setContentText(getString(R.string.notification_text))
-			.setOngoing(true)
-			.setTicker(getString(R.string.ticker_text))
-			.addAction(R.drawable.ic_stat_minus, "", getPendingIntent(-1))
-			.addAction(R.drawable.ic_stat_plus, "", getPendingIntent(1));
-
-			if (Build.VERSION.SDK_INT >= 16) {
-				builder.setPriority(Notification.PRIORITY_MAX);
-			}
-
-			Intent notifyIntent = new Intent(this, ResultsService.class);
-			notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-
-			builder.setContentIntent(getPendingIntent(0));
-			Notification notification = builder.build();
-			if (Build.VERSION.SDK_INT >= 16) {
-				notification.priority = Notification.PRIORITY_MAX;
-			}
-			mNotificationManager.notify(Constants.mNotificationId, notification);
-		} else {
-			mNotificationManager.cancelAll();
-		}
-	}
-
-	private PendingIntent getPendingIntent(int state) {
-		// 0 = off, 1 == increase, -1 == decrease
-		Intent notifyIntent = new Intent(this, ResultsService.class);
-		notifyIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-		notifyIntent.setAction(String.valueOf(state));
-		PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-		return pendingIntent;
+		Utils.showOngoingNotification(this, show);
 	}
 
 	@Override
@@ -283,8 +244,7 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onPause() {
 		super.onPause();
-		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-		settings.edit().putInt(Constants.SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress()).commit();
+		mPreferences.edit().putInt(Constants.SETTINGS_FLASH_KEY, mBrightnessSlider.getProgress()).commit();
 	}
 
 	public void showAbout() {
