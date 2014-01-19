@@ -190,7 +190,13 @@ public class MainActivity extends Activity {
 				complainAbout(Errors.NO_ROOT_ACCESS);
 			} else {
 				openShell();
-				//updateTorchValue(mBrightnessSlider.getProgress());   //Why was this here?
+				int progress = mBrightnessSlider.getProgress();
+				int newValue=progress;
+				if (progress != 0 && mInvertValues) {
+					//Invert nonzero values if required
+					newValue = Math.max(1, mMaxValue+1-progress);
+				}
+				updateTorchValue(newValue);
 			}
 		}
 	}
