@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="/home/mohammad/Downloads/RootTools-2.6.jar"/>
-	<classpathentry exported="true" kind="lib" path="/home/mohammad/Downloads/GoogleAdMobAdsSdkAndroid-6.4.1/GoogleAdMobAdsSdk-6.4.1.jar"/>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="src" path="gen"/>
+	<classpathentry kind="lib" path="D:/Downloads/RootTools-3.4.jar"/>
+	<classpathentry kind="lib" path="C:/Java/androidworkspace/android-AdjustableTorch/trunk/libs/GoogleAdMobAdsSdk-6.4.1.jar"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="gen"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

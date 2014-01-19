@@ -14,6 +14,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 
 import com.stericson.RootTools.RootTools;
+import com.stericson.RootTools.execution.Command;
 import com.stericson.RootTools.execution.CommandCapture;
 import com.stericson.RootTools.execution.Shell;
 
@@ -60,7 +61,10 @@ public class Utils {
 		CommandCapture command = new CommandCapture(0, commandString);
 		if (shell != null) {
 			try {
-				shell.add(command).waitForFinish();
+				//Updated for RootTools 3.4
+				Command c = shell.add(command);
+				while(!c.isFinished())
+					Thread.sleep(10);
 			} catch (Exception e) {
 				e.printStackTrace();
 				return false;
@@ -83,11 +87,12 @@ public class Utils {
 
 		try {
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+			int maxValue = prefs.getInt(Constants.SETTINGS_MAX_VALUE, 16);
 			int newValue = prefs.getInt(Constants.SETTINGS_FLASH_KEY, 0);
 			boolean invertValues = prefs.getBoolean(Constants.SETTINGS_INVERT_VALUES, false);
 
-			if ((newValue >= 16 && increment && !invertValues) || (newValue >= 15 && invertValues && increment))
-				return invertValues ? 1 : 16;
+			if (increment && newValue >= maxValue)
+				return maxValue;
 
 			if (increment) {
 				newValue += 1;
@@ -98,19 +103,15 @@ public class Utils {
 			if (newValue <= 0) {
 				Utils.turnOffFlash(context);
 				return 0;
+			} else if(newValue>maxValue) {
+				//This is still possible despite the "return maxValue" optimization above
+				newValue = maxValue;
 			}
 
-			if (newValue != 0 && invertValues) {
-				/* Some devices like the Galaxy S3 have inverted values for some reason
-				 * For example, 15 == 1, 14 == 2
-				 */
-				if (newValue == 16) {
-					newValue = 1;
-				} else {
-					newValue = 16 - newValue;
-				}
-			}
-			Utils.updateTorchValue(newValue, RootTools.getShell(true));
+			//Invert values if required
+			int torchValue = invertValues? Math.max(1, maxValue+1-newValue) : newValue;
+
+			Utils.updateTorchValue(torchValue, RootTools.getShell(true));
 			prefs.edit().putInt(Constants.SETTINGS_FLASH_KEY, newValue).commit();
 			return newValue;
 		} catch (Exception e) {

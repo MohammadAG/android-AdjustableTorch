@@ -8,10 +8,13 @@ public class Constants {
 	
 	public static final String[] listOfFlashFiles = {
 		"/sys/class/camera/flash/rear_flash",
-		"/sys/class/camera/rear/rear_flash"
+		"/sys/class/camera/rear/rear_flash",
+		"/sys/class/leds/flashlight/brightness"
 	};
 
 	public static final String SETTINGS_FLASH_KEY = "flash_value";
+	public static final String SETTINGS_WIDGET_KEY = "widget_flash_value";
+	public static final String SETTINGS_MAX_VALUE = "flash_max_value";
 	public static final String SETTINGS_INVERT_VALUES = "invert_values";
 	public static final String SETTINGS_ENABLE_ADS = "enable_ads";
 	public static final String PREFS_NAME = "AdjustableTorch";
