@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mohammadag.adjustabletorch"
-    android:versionCode="7"
-    android:versionName="1.6" >
+    android:versionCode="8"
+    android:versionName="1.7" >
 
     <uses-sdk
-        android:minSdkVersion="14"
+        android:minSdkVersion="9"
         android:targetSdkVersion="18" />
 
     <uses-permission android:name="android.permission.ACCESS_SUPERUSER" />
@@ -46,7 +46,8 @@
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".TorchWidgetProvider" >
+        <receiver android:name=".TorchWidgetProvider"
+            android:label="@string/widget_label" >
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
 
@@ -61,7 +62,23 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widgetproviderinfo" />
         </receiver>
+        <receiver android:name=".StaticTorchWidgetProvider"
+            android:label="@string/widget_static_label" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
 
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.ALTERNATIVE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.mohammadag.adjustabletorch.FLASH_VALUE_UPDATED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/staticwidgetproviderinfo" />
+        </receiver>
+        
         <service
             android:name="com.mohammadag.adjustabletorch.ResultsService"
             android:enabled="true"

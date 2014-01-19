@@ -2,22 +2,31 @@
 <resources>
 
     <string name="app_name">Adjustable Torch</string>
+    <string name="widget_label">Adjustable Torch</string>
+    <string name="widget_static_label">Fixed Torch</string>
     <string name="action_settings">Settings</string>
+    <string name="action_set_widget_brightness">Set fixed torch widget to current brightness</string>
     <string name="error">Error!</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="toast_done">Done</string>
+    <string name="toast_set_widget_off">Turn on torch first!</string>
     <string name="uninstall_and_quit">Quit and uninstall</string>
     <string name="no_sysfs_file">The sysfs file this app interfaces with does not exist. This app will never work on this phone.</string>
     <string name="device_not_rooted">The device is not rooted, please root your device and restart the application. Do not ask about instructions on how to do this, use a search engine to find out.</string>
     <string name="root_access_not_given">You seem to have denied root access to this app, go to your Superuser application and allow access, then restart this application.</string>
     <string name="quit">Quit</string>
-    <string name="warning">WARNING: Using the flash at maximum brightness may cause damage to the flash. The developer of this application is not responsible for any damage caused to your device due to prolonged usage of the flash at a high brightness</string>
+    <string name="warning">WARNING: Using the flash at maximum brightness may cause damage to the flash. The developer of this application is not responsible for any damage caused to your device due to prolonged usage of the flash at a high brightness.</string>
     <string name="notification_text">Click here to turn off torch</string>
     <string name="ticker_text">Torch turned on</string>
     <string name="action_about">About</string>
     <string name="enable_ads">Enable ads</string>
     <string name="invert_values">Invert values</string>
+    <string name="set_maximum">Set maximum value</string>
     <string name="about_dialog_title">About</string>
-    <string name="about_text">Adjustable torch application allows you to use the torch light at different brightness levels.\n\n© 2013\nMohammad Abu-Garbeyyeh</string>
+    <string name="about_text">Adjustable torch application allows you to use the torch light at different brightness levels.\n\n© 2013/14\nMohammad Abu-Garbeyyeh\nand\nC.C.P. Cre@ions</string>
     <string name="action_donate">Donate</string>
     <string name="title_activity_result">ResultActivity</string>
+    <string name="maximum_layout_instructions">Using the slider below, find the highest value that still makes sense and select OK to set the limit.\nCurrent value: %s</string>
 
 </resources>

@@ -2,6 +2,7 @@
 
     <item android:id="@+id/action_donate" android:title="@string/action_donate"></item>
     <item android:id="@+id/action_about" android:title="@string/action_about"></item>
+    <item android:id="@+id/set_maximum" android:title="@string/set_maximum"></item>
     <item android:id="@+id/invert_values" android:title="@string/invert_values" android:checkable="true"></item>
     <item android:id="@+id/enable_ads" android:title="@string/enable_ads" android:checkable="true"></item>
 

@@ -12,11 +12,17 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.Button;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Toast;
 
 import com.google.ads.AdRequest;
 import com.google.ads.AdView;
@@ -25,8 +31,9 @@ import com.stericson.RootTools.execution.Shell;
 
 public class MainActivity extends Activity {
 	private SeekBar mBrightnessSlider = null;
+	private Button mSetWidgetValueButton = null;
 	private SharedPreferences mPreferences = null;
-
+	private int mMaxValue = 16;
 	private boolean mInvertValues = false;
 
 	private Shell mShell = null;
@@ -48,29 +55,32 @@ public class MainActivity extends Activity {
 		mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 		toggleAds(mPreferences.getBoolean(Constants.SETTINGS_ENABLE_ADS, true));
 		mInvertValues = mPreferences.getBoolean(Constants.SETTINGS_INVERT_VALUES, false);
+		mMaxValue = mPreferences.getInt(Constants.SETTINGS_MAX_VALUE, 16);
 
 		registerReceiver(mFlashValueUpdatedReceiver,
 				new IntentFilter(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME));
 
 		if (mBrightnessSlider != null) {
+			mBrightnessSlider.setMax(mMaxValue);
 			mBrightnessSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 				@Override
 				public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+					if(!fromUser)  //Do not change torch value unless a human changed the progress bar
+						return;
+					
 					int newValue = progress;
 
 					if (progress != 0 && mInvertValues) {
-						/* Some devices like the Galaxy S3 have inverted values for some reason
-						 * For example, 15 == 1, 14 == 2
-						 */
-						if (progress == mBrightnessSlider.getMax()) {
-							newValue = 1;
-						} else {
-							newValue = mBrightnessSlider.getMax() - progress;
-						}
+						//Invert nonzero values if required
+						newValue = Math.max(1, mMaxValue+1-progress);
 					}
 
 					updateTorchValue(newValue);
 					mPreferences.edit().putInt(Constants.SETTINGS_FLASH_KEY, progress).commit();
+
+					Intent broadcastIntent = new Intent(Constants.FLASH_VALUE_UPDATED_BROADCAST_NAME);
+					broadcastIntent.putExtra(Constants.KEY_NEW_VALUE, progress);
+					sendBroadcast(broadcastIntent);
 				}
 				@Override
 				public void onStartTrackingTouch(SeekBar seekBar) { }
@@ -79,6 +89,21 @@ public class MainActivity extends Activity {
 			});
 
 			mBrightnessSlider.setProgress(mPreferences.getInt(Constants.SETTINGS_FLASH_KEY, 0));
+		}
+		
+		if(mSetWidgetValueButton != null) {
+			mSetWidgetValueButton.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					int progress = mPreferences.getInt(Constants.SETTINGS_FLASH_KEY, 0);
+					if (progress == 0) {
+						Toast.makeText(MainActivity.this, R.string.toast_set_widget_off, Toast.LENGTH_SHORT).show();
+					} else {
+						mPreferences.edit().putInt(Constants.SETTINGS_WIDGET_KEY, progress).commit();
+						Toast.makeText(MainActivity.this, R.string.toast_done, Toast.LENGTH_SHORT).show();
+					}
+				}
+			});
 		}
 
 		if (Utils.getSysFsFile() != null) {
@@ -92,19 +117,13 @@ public class MainActivity extends Activity {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			int newValue = intent.getIntExtra(Constants.KEY_NEW_VALUE, 0);
-			if (mInvertValues && newValue != 0) {
-				if (newValue == mBrightnessSlider.getMax())
-					newValue = 0;
-				else
-					newValue = mBrightnessSlider.getMax() - newValue;
-			}
-
 			mBrightnessSlider.setProgress(newValue);
 		}
 	};
 
 	private void getViews() {
 		mBrightnessSlider = (SeekBar) findViewById(R.id.flashlightBrightnessSlider);
+		mSetWidgetValueButton = (Button) findViewById(R.id.widgetLevelButton);
 	}
 
 	private void createDialog(int titleId, int messageId, int positiveTextId, DialogInterface.OnClickListener positiveAction,
@@ -171,7 +190,7 @@ public class MainActivity extends Activity {
 				complainAbout(Errors.NO_ROOT_ACCESS);
 			} else {
 				openShell();
-				updateTorchValue(mBrightnessSlider.getProgress());
+				//updateTorchValue(mBrightnessSlider.getProgress());   //Why was this here?
 			}
 		}
 	}
@@ -205,6 +224,55 @@ public class MainActivity extends Activity {
 	private void showOngoingNotification(boolean show) {
 		Utils.showOngoingNotification(this, show);
 	}
+	
+	private void setNewMaximum() {
+		final View content = LayoutInflater.from(this).inflate(R.layout.new_maximum_layout, null);
+		final SeekBar seekBar = (SeekBar)content.findViewById(R.id.seekbar);
+		seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+			final TextView textView = (TextView)content.findViewById(R.id.instructions_textview);
+
+			@Override
+			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				textView.setText(getText(R.string.maximum_layout_instructions).toString().replace("%s", String.valueOf(progress+1)) );
+				updateTorchValue(progress+1);
+			}
+
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) { }
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) { }
+		});
+		
+		//Initial redraw
+		seekBar.setProgress(0);
+
+		new AlertDialog.Builder(this)
+			.setTitle(R.string.set_maximum)
+			.setView(content)
+			.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					mMaxValue = seekBar.getProgress()+1;
+					mPreferences.edit().putInt(Constants.SETTINGS_MAX_VALUE, mMaxValue).commit();
+					updateTorchValue(0);
+					finish();
+					startActivity(getIntent());
+				}
+			})
+			.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					updateTorchValue(0);
+				}
+			})
+			.setOnCancelListener(new DialogInterface.OnCancelListener() {
+				@Override
+				public void onCancel(DialogInterface dialog) {
+					updateTorchValue(0);
+				}
+			})
+			.show();
+	}
 
 	@Override
 	protected void onDestroy() {
@@ -228,6 +296,9 @@ public class MainActivity extends Activity {
 			toggleAds(!item.isChecked());
 			mPreferences.edit().putBoolean(Constants.SETTINGS_ENABLE_ADS, !item.isChecked()).commit();
 			item.setChecked(!item.isChecked());
+			return true;
+		case R.id.set_maximum:
+			setNewMaximum();
 			return true;
 		case R.id.invert_values:
 			mBrightnessSlider.setProgress(0);
@@ -265,23 +336,31 @@ public class MainActivity extends Activity {
 
 	private void showAd() {
 		final AdView adLayout = (AdView) findViewById(R.id.adView);
+		final Button widgetButton  = (Button)findViewById(R.id.widgetLevelButton);
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				adLayout.setEnabled(true);
 				adLayout.setVisibility(View.VISIBLE);
-				adLayout.loadAd(new AdRequest());
+				adLayout.loadAd(new AdRequest()); 
+				RelativeLayout.LayoutParams widgetButtonLP = (RelativeLayout.LayoutParams)widgetButton.getLayoutParams();
+				widgetButtonLP.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 0);
+				widgetButton.setLayoutParams(widgetButtonLP);
 			}
 		});
 	}
 
 	private void hideAd() {
 		final AdView adLayout = (AdView) findViewById(R.id.adView);
+		final Button widgetButton  = (Button)findViewById(R.id.widgetLevelButton);
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				adLayout.setEnabled(false);
 				adLayout.setVisibility(View.GONE);
+				RelativeLayout.LayoutParams widgetButtonLP = (RelativeLayout.LayoutParams)widgetButton.getLayoutParams();
+				widgetButtonLP.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+				widgetButton.setLayoutParams(widgetButtonLP);
 			}
 		});
 	}

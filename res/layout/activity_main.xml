@@ -18,7 +18,7 @@
         android:max="16" />
     
     <TextView
-        android:id="@+id/textView1"
+        android:id="@+id/instructions_textview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/flashlightBrightnessSlider"
@@ -36,5 +36,14 @@
         ads:loadAdOnCreate="false"
         ads:testDevices="TEST_EMULATOR, 4df1cc2033fc9f9f" >
     </com.google.ads.AdView>
+
+	<Button
+	    android:id="@+id/widgetLevelButton"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_above="@+id/adView"
+	    android:layout_centerHorizontal="true"
+	    android:layout_marginBottom="16dp"
+	    android:text="@string/action_set_widget_brightness" />
 
 </RelativeLayout>
